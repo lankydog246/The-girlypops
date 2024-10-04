@@ -1,0 +1,4 @@
+N = 1E6
+a = 1E-10
+t = 1
+epsillon = 0
