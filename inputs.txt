@@ -1,4 +1,15 @@
-N = 1E6
-a = 1E-10
+# Inputs for the our 1D linear chain system
+# For both single and double atoms per unit cell
+
+# The number of iterations:
+N = 1e3
+
+# The atomic lattice spacing (Å):
+a = 1
+
+# The hopping energy (eV):
 t = 1
-epsillon = 0
+
+#The onsite-energies (eV):
+epsilon_a = 0
+epsilon_b = 0
