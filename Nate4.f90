@@ -7,7 +7,7 @@
 module constants
     implicit none
     save
-    integer , parameter :: dp = selected_real_kind(15 , 800)
+    integer , parameter :: dp = selected_real_kind(15 , 300)
     real(kind = dp)     :: pi = 4.0_dp*ATAN(1.0_dp)
 contains
 !--------------------------------------------------------------------------------------!
@@ -153,7 +153,7 @@ module analytic_subroutines
     contains
 
 !--------------------------------------------------------------------------------------!
-!The analysic subroutine calculates the analyic solutions for each of the systems calc-!
+!The analytic subroutine calculates the analyic solutions for each of the systems calc-!
 !ulated in this experiment.                                                            !
 !All constants are kept general (other than the Broullin zone limits) so that they can !
 !be read from an input file.                                                           !
@@ -267,12 +267,151 @@ module analytic_subroutines
 
 end module analytic_subroutines
 
+module zheev_module
+  use constants
+  implicit none
+
+  contains
+
+  subroutine call_zheev(A, W)
+    implicit none
+      character                                           :: JOBZ, UPLO
+      integer                                             :: N, LDA, LWORK, INFO
+      integer                                             :: IERR, IOSTAT = 0
+
+      ! arrays and matrices
+      complex(kind = dp) , dimension(:,:), intent(inout)  :: A
+      real(kind = dp) , dimension(:), allocatable         :: W
+      complex(kind = dp) , dimension(:), allocatable      :: WORK
+      real(kind = dp) , dimension(:), allocatable         :: RWORK
+
+
+      JOBZ = 'N'
+      UPLO = 'U'
+
+      N = size(A, 1)
+      LDA  = max(1, N)
+      LWORK = max(1, 2*N - 1)
+      INFO = IOSTAT
+
+      allocate(W(N), stat=IERR)
+      if (IERR /= 0) stop "failed to allocate W"
+
+      allocate(WORK(max(1,LWORK)), stat=IERR)
+      if (IERR /= 0) stop "failed to allocate WORK"
+
+      allocate(RWORK(max(1, 3*N - 2)), stat=IERR)
+      if (IERR /= 0) stop "failed to allocate RWORK"
+
+      call zheev(JOBZ , UPLO , N , A , LDA , W, WORK, LWORK, RWORK, INFO)
+
+  end subroutine call_zheev
+
+end module zheev_module
+
+module numerical_subroutines
+    use constants
+    use zheev_module
+    implicit none
+
+    contains
+
+    subroutine find_eigenval(a_in , epsilon_a_in , epsilon_b_in , t_in, steps_in)
+        ! Inputs  : a_in, epsilon_a_in, epsilon_b_in, t_in, steps_in
+        ! Outputs : none
+        !
+        ! Purpose : to find the numerical solutions by setting up the eigen matrix
+        ! and then using zheev from LAPACK to find the eigenvalues
+        implicit none
+        real(kind = dp) , intent(IN)                :: epsilon_a_in , epsilon_b_in, a_in, t_in
+        real(kind = dp)                             :: k_min, k_max, k_step, k_current
+        integer , intent(IN)                        :: steps_in
+        integer                                     :: istat , k_big
+        complex(kind = dp) , dimension(2 , 2)       :: eigen_matrix = (0.0_dp , 0.0_dp)
+        complex(kind = dp)                          :: i_const = (0.0_dp , 1.0_dp)
+
+        real(kind = dp) , dimension(:), allocatable :: eigen_values
+!
+!         character                             :: JOBZ, UPLO
+!         integer                               :: N , LDA , LWORK, INFO
+!         complex(kind = dp) , dimension(2 , 2) :: A
+!         real(kind = dp) , dimension(2)        :: eigen_values
+!         complex(kind = dp) , dimension(1000)  :: WORK
+!         real(kind = dp) , dimension(3*2 - 2)  :: RWORK
+
+        integer                                     :: file_unit_1, file_unit_2
+        !character(len = 16)                         :: filename
+
+        k_min     = -pi/a_in
+        k_max     = pi/a_in
+        k_step    = (k_max - k_min)/real(steps_in , kind = dp)
+        k_current = k_min
+
+        file_unit_1 = 15
+        file_unit_2 = 16
+		
+		
+        open (unit = file_unit_1 , file = 'outputs/double_numerical_1.csv' , status = "replace" , action = "write", iostat = istat)
+        open (unit = file_unit_2, file = 'outputs/double_numerical_2.csv', status = "replace", action= "write", iostat=istat)
+
+        ! looping over the k values to find the eigenmatrix for each k value
+        do k_big = 0 , steps_in , 1
+
+          eigen_matrix(1 , 1) = epsilon_a_in
+          eigen_matrix(2 , 2) = epsilon_b_in
+
+          eigen_matrix(1 , 2) = -t_in*(1.0_dp + EXP(-1.0_dp*i_const*k_current*a_in))
+          eigen_matrix(2 , 1) = -t_in*(1.0_dp + EXP(i_const*k_current*a_in))
+
+!           JOBZ = 'N'
+!           UPLO = 'U'
+!           N = 2
+!           LDA = N
+!           LWORK = -1
+!           INFO = 0
+!           A = eigen_matrix
+!           eigen_values = 0.0_dp
+!
+!           call zheev(JOBZ , UPLO , N , A , LDA ,eigen_values, WORK, LWORK, RWORK, INFO)
+
+!           JOBZ = 'V'
+!           UPLO = 'L'
+!           N = 2
+!           LDA = N
+!           LWORK =  3
+!           INFO = 0
+!           A = eigen_matrix
+!           eigen_values = 0.0_dp
+
+!           call zheev(JOBZ , UPLO , N , A , LDA ,eigen_values, WORK, LWORK, RWORK, INFO)
+
+          call call_zheev(eigen_matrix, eigen_values)
+
+          write (unit = file_unit_1 , fmt = * , iostat = istat) k_current, ",", eigen_values(1)
+          write (unit = file_unit_2 , fmt = * , iostat = istat) k_current, ",", eigen_values(2)
+!
+!           print*, eigen_values
+          deallocate(eigen_values)
+
+          k_current = k_current + k_step
+        end do
+
+        close (unit = file_unit_1 , iostat = istat)
+        if (istat /= 0) stop "error closing test file"
+		
+        close (unit = file_unit_2 , iostat = istat)
+        if (istat /= 0) stop "error closing test file"
+    end subroutine find_eigenval
+
+end module numerical_subroutines
+
 program Nate
     use constants
     use analytic_subroutines
+    use numerical_subroutines
     !subroutines module put into main code here
     implicit none
-    real(kind = dp)     :: a_val , epsilon_a_val , epsilon_b_val , t_val
+    real(kind = dp)     :: a_val, epsilon_a_val, epsilon_b_val, t_val
     integer             :: N_val
     character(len = 30) :: filename1
     character(len = 30) :: case_type
@@ -282,18 +421,19 @@ program Nate
     !epsilon_b_val = 0.0_dp
     !t_val         = 1.0_dp
     !N_val         = 1E3
-
-    !Gets the N, a, t, epsilon_a, and epsilon_b values from the inputs.txt file
+    
+	!Gets the N, a, t, epsilon_a, and epsilon_b values from the inputs.txt file
     call get_inputs(N_val, a_val, t_val, epsilon_a_val, epsilon_b_val)
 
+    call find_eigenval(a_val , epsilon_a_val , epsilon_b_val , t_val, N_val)
 
-    filename1 = 'outputs/single_analytic.csv'
+    filename1 = 'outputs/single_analytical.csv'
     case_type = 'single'
     !case types used to define type of analytic solution wanted :- single calculated here
     call plotting_subroutine(a_val , epsilon_a_val , epsilon_b_val , t_val , N_val , filename1 , case_type)
     !analytic solution calculated and written to .csv file all through plotting_subroutine
 
-    filename1 = 'outputs/double_analytic.csv'
+    filename1 = 'outputs/double_analytical.csv'
     case_type = 'double'
     !double calculated here
     call plotting_subroutine(a_val , epsilon_a_val , epsilon_b_val , t_val , N_val , filename1 , case_type)
