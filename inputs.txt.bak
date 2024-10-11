@@ -13,10 +13,3 @@ t = 1
 #The onsite-energies (eV):
 epsilon_a = 0
 epsilon_b = 0
-epsilon_c = 0
-epsilon_d = 0
-epsilon_e = 0
-
-#The number of atoms per unit cell (2-5)
-#   (2 will do both 1 and 2)
-atoms_per_unit_cell = 2

@@ -16,27 +16,23 @@ contains
 !These values will be then passed directly to the analytical and numerical solution    !
 !calculators for our 1D linear system for both 1 and 2 atoms per unit cell respectively!
 !--------------------------------------------------------------------------------------!
-    subroutine get_inputs(N_val, a_val, t_val, epsilon_array, atoms_per_unit_cell)
+    subroutine get_inputs(N_val, a_val, t_val, epsilon_a_val, epsilon_b_val)
         implicit none
         !All the following values outputted are constants for our system
         !N specifies the amount of iterations used to plot the values
-        !(k vs E) from -Ï€/a -> Ï€/a (the 1st Brillouin zone)
-        integer, intent(out)                                  :: N_val, atoms_per_unit_cell
+        !(k vs E) from -pi/a -> pi/a (the 1st Brillouin zone)
+        integer, intent(out)       :: N_val
         !a_val is the lattice spacing (the a from before)
         !t_val is the hopping energy
         !epsilon_a_val and epsilon_b_val are the on-site energies for atoms a and b respectively
-        real(kind=dp), intent(out)                            :: a_val, t_val
-        real(kind=dp), dimension(:), allocatable, intent(out) :: epsilon_array
-        real(kind=dp), dimension(5)                           :: epsilon_array_temp
+        real(kind=dp), intent(out) :: a_val, t_val, epsilon_a_val, epsilon_b_val
         !The following logicals (boolean values) are there
         !to check their associated values existance
-        logical                                               :: inputs_file_exists, N_val_exists, a_val_exists, t_val_exists
-        logical                                               :: epsilon_a_val_exists, epsilon_b_val_exists
-        logical                                               :: epsilon_c_val_exists, epsilon_d_val_exists, epsilon_e_val_exists
-        integer                                               :: file_unit = 15, eq_pos, istat, i
-        character(len=25)                                     :: line, val_name
-        real(kind=dp)                                         :: N_val_real, epsilon_a_val, epsilon_b_val
-        real(kind=dp)                                         :: epsilon_c_val, epsilon_d_val, epsilon_e_val
+        logical                    :: inputs_file_exists, N_val_exists, a_val_exists, t_val_exists
+        logical                    :: epsilon_a_val_exists, epsilon_b_val_exists
+        integer                    :: file_unit = 15, eq_pos, istat
+        character(len=25)          :: line, val_name
+        real(kind=dp)              :: N_val_real
 
         !Sets the exists booleans to False which only sets
         !to true if the corresponding value have been found
@@ -45,9 +41,6 @@ contains
         t_val_exists         = .False.
         epsilon_a_val_exists = .False.
         epsilon_b_val_exists = .False.
-        epsilon_c_val_exists = .False.
-        epsilon_d_val_exists = .False.
-        epsilon_e_val_exists = .False.
 
         !Checks whether the inputs.txt file exists
         inquire(file="inputs.txt",exist=inputs_file_exists)
@@ -92,21 +85,6 @@ contains
                             read(line(eq_pos+1:), fmt=*, iostat=istat) epsilon_b_val
                             if (istat /= 0) STOP "error: value of epsilon_b is invalid"
                             epsilon_b_val_exists = .True.
-                        case("epsilon_c")
-                            read(line(eq_pos+1:), fmt=*, iostat=istat) epsilon_b_val
-                            if (istat /= 0) STOP "error: value of epsilon_c is invalid"
-                            epsilon_c_val_exists = .True.
-                        case("epsilon_d")
-                            read(line(eq_pos+1:), fmt=*, iostat=istat) epsilon_b_val
-                            if (istat /= 0) STOP "error: value of epsilon_d is invalid"
-                            epsilon_d_val_exists = .True.
-                        case("epsilon_e")
-                            read(line(eq_pos+1:), fmt=*, iostat=istat) epsilon_b_val
-                            if (istat /= 0) STOP "error: value of epsilon_e is invalid"
-                            epsilon_e_val_exists = .True.
-                        case("atoms_per_unit_cell")
-                            read(line(eq_pos+1:), fmt=*, iostat=istat) atoms_per_unit_cell
-                            if (istat /= 0) STOP "error: value of atoms_per_unit_cell is invalid"
                         case default
                             print "(a,a,a)", "warning: ", TRIM(val_name), " isn't a valid input"
                     end select
@@ -150,48 +128,19 @@ contains
             epsilon_b_val = 0.0_dp
         end if
 
-        if (.not. epsilon_c_val_exists) then
-            print 10, "warning: resorting to default epsilon_c value"
-            epsilon_c_val = 0.0_dp
-        end if
-
-        if (.not. epsilon_d_val_exists) then
-            print 10, "warning: resorting to default epsilon_d value"
-            epsilon_d_val = 0.0_dp
-        end if
-
-        if (.not. epsilon_e_val_exists) then
-            print 10, "warning: resorting to default epsilon_e value"
-            epsilon_e_val = 0.0_dp
-        end if
-
         !Displays the values being outputted from the subroutine
-        print 10, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        print 10, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
         print 11, "N = ", N_val, " iterations"
-        print 12, "a = ", a_val, " Å"
+        print 12, "a = ", a_val, " Aangstroms"
         print 12, "t = ", t_val, " eV"
         print 12, "epsilon_a = ", epsilon_a_val, " eV"
         print 12, "epsilon_b = ", epsilon_b_val, " eV"
-        print 12, "epsilon_c = ", epsilon_c_val, " eV"
-        print 12, "epsilon_d = ", epsilon_d_val, " eV"
-        print 12, "epsilon_e = ", epsilon_e_val, " eV"
-        print 11, "atoms_per_unit_cell = ", atoms_per_unit_cell, ""
-        print 10, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
-        allocate(epsilon_array(atoms_per_unit_cell), stat=istat)
-        if (istat/=0) stop "error allocating epsilon_array"
-
-        epsilon_array_temp = (/epsilon_a_val, epsilon_b_val, epsilon_c_val, epsilon_d_val, epsilon_e_val/)
-
-        do i = 1, atoms_per_unit_cell
-            epsilon_array(i) = epsilon_array_temp(i)
-        end do
-
+        print 10, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
         !Fortran string formatting codes
         10 format (a)
-        11 format (a22, I4, a)
-        12 format (a22, f4.1, a)
+        11 format (a12, I4, a)
+        12 format (a12, f4.1, a)
     end subroutine get_inputs
 end module constants
 
@@ -279,14 +228,14 @@ module analytic_subroutines
 !writing to them.                                                                      !
 !--------------------------------------------------------------------------------------!
 
-    subroutine plotting_subroutine(a_in , epsilon_a_in, epsilon_b_in , t_in , steps_in , filename_in , case_in)
+    subroutine plotting_subroutine(a_in , epsilon_a_in , epsilon_b_in , t_in , steps_in , filename_in , case_in)
         implicit none
-        real(kind = dp) , intent(IN)            :: a_in, t_in, epsilon_a_in, epsilon_b_in
-        integer , intent(IN)                    :: steps_in
-        character(len = *) , intent(IN)         :: filename_in , case_in
-        logical                                 :: lexist
+        real(kind = dp) , intent(IN)     :: a_in , epsilon_a_in , epsilon_b_in , t_in
+        integer , intent(IN)             :: steps_in
+        character(len = *) , intent(IN) :: filename_in , case_in
+        logical                          :: lexist
         !lexist logical used to check system for files
-        integer                                 :: file_unit = 15 , istat = 0
+        integer                          :: file_unit = 15 , istat = 0
         !file unit defined here for use throughout file uses
 
         inquire(file=filename_in, exist=lexist)
@@ -367,124 +316,79 @@ module numerical_subroutines
 
     contains
 
-!--------------------------------------------------------------------------------------!
-!generate_eigen_matrix subroutine takes the inputs from the inputs.txt file and the    !
-!current k value that is being looped through, and calculates the related eigen_matrix !
-!(i.e. a matrix of dimensions size(epsilon_array_in)xsize(epsilon_array_in) which is         !
-!Hermitian and will be passed into the ZHEEV function which will calculate the eigen-  !
-!-values for our eigen_matrix) for our 1D linear chain system with size(epsilon_array_in) !
-! atoms per unit cell                                                                  !
-!--------------------------------------------------------------------------------------!
-    subroutine generate_eigen_matrix(k_current, a_in, t_in, epsilon_array_in, matrix_size, eigen_matrix)
-        implicit none
-        real(kind=dp), intent(IN)                       :: t_in, a_in, k_current
-        real(kind=dp), dimension(:), intent(IN)         :: epsilon_array_in
-        integer, intent(IN)                             :: matrix_size
-        complex(kind=dp), dimension(:,:), intent(OUT)   :: eigen_matrix
-        integer                                         :: i, j
-        complex(kind=dp)                                :: i_const = (0.0_dp,1.0_dp)
-
-        eigen_matrix = 0.0_dp
-
-        do i = 1, matrix_size
-            do j = 1, matrix_size
-
-                !Sets the \ diagonal to epsilons (the on-site energies)
-                if (i==j) then
-                    eigen_matrix(i,j) = epsilon_array_in(i)
-                !Sets the values next to the epsilons to -t if they're not on the border (the intra-hopping energy)
-                else if (((j==i-1) .or. (j==i+1)) .and. (j/=1 .and. j/=matrix_size) .and. (i/=1 .and. i/=matrix_size)) then
-                    eigen_matrix(i,j) = -t_in
-                !Sets the top right corner to the - exponential (the inter-hopping energy)
-                else if (i==1 .and. j==matrix_size) then
-                    eigen_matrix(i,j) = -t_in*exp(-i_const*k_current*a_in)
-                !Sets the bottom left corner to the + exponential (the inter-hopping energy)
-                else if (i==matrix_size .and. j==1) then
-                    eigen_matrix(i,j) = -t_in*exp(i_const*k_current*a_in)
-                end if
-
-                !Adds the non-periodic terms
-                if (matrix_size == 2) then
-                    !Adds the -t in the top right corner (the intra-hopping energy)
-                    if (i==1 .and. j==matrix_size) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    !Adds the -t in the bottom left corner (the intra-hopping energy)
-                    else if (i==matrix_size .and. j==1) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    end if
-                else
-                    !Adds the -t left to the top right corner (the intra-hopping energy)
-                    if (i==1 .and. j==matrix_size-1) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    !Adds the -t below the top right corner (the intra-hopping energy)
-                    else if (i==2 .and. j==matrix_size) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    !Adds the -t above the bottom left corner (the intra-hopping energy)
-                    else if (i==matrix_size-1 .and. j==1) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    !Adds the -t above the bottom left corner (the intra-hopping energy)
-                    else if (i==matrix_size .and. j==2) then
-                        eigen_matrix(i,j) = eigen_matrix(i,j) - t_in
-                    end if
-                end if
-            end do
-        end do
-    end subroutine generate_eigen_matrix
-
-    subroutine find_eigenval(a_in , epsilon_array_in , t_in, steps_in, matrix_size)
-        ! Inputs  : a_in, epsilon_array_in, t_in, steps_in
+    subroutine find_eigenval(a_in , epsilon_a_in , epsilon_b_in , t_in, steps_in, file_name_1, file_name_2)
+        ! Inputs  : a_in, epsilon_a_in, epsilon_b_in, t_in, steps_in
         ! Outputs : none
         !
         ! Purpose : to find the numerical solutions by setting up the eigen matrix
         ! and then using zheev from LAPACK to find the eigenvalues
         implicit none
-        real(kind = dp) , intent(IN)                             :: a_in, t_in
-        real(kind=dp), dimension(:), intent(in)                  :: epsilon_array_in
-        real(kind = dp)                                          :: k_min, k_max, k_step, k_current
-        integer , intent(IN)                                     :: steps_in, matrix_size
-        integer                                                  :: istat , k_big , i , j
-        complex(kind = dp), dimension(matrix_size , matrix_size) :: eigen_matrix
-        !complex(kind = dp)                          :: i_const = (0.0_dp , 1.0_dp)
+        real(kind = dp) , intent(IN)                :: epsilon_a_in , epsilon_b_in, a_in, t_in
+        real(kind = dp)                             :: k_min, k_max, k_step, k_current
+        integer , intent(IN)                        :: steps_in
+        integer                                     :: istat , k_big
+        complex(kind = dp) , dimension(2 , 2)       :: eigen_matrix = (0.0_dp , 0.0_dp)
+        complex(kind = dp)                          :: i_const = (0.0_dp , 1.0_dp)
 
-        real(kind = dp) , dimension(:), allocatable              :: eigen_values
-        integer                                                  :: file_unit_1 = 5, file_unit_2 = 10
-        character(len = 40)                                      :: filename_i
+        real(kind = dp) , dimension(:), allocatable :: eigen_values
+!
+!         character                             :: JOBZ, UPLO
+!         integer                               :: N , LDA , LWORK, INFO
+!         complex(kind = dp) , dimension(2 , 2) :: A
+!         real(kind = dp) , dimension(2)        :: eigen_values
+!         complex(kind = dp) , dimension(1000)  :: WORK
+!         real(kind = dp) , dimension(3*2 - 2)  :: RWORK
+
+        integer                                     :: file_unit_1, file_unit_2
+        !character(len = 16)                         :: filename
 
         k_min     = -pi/a_in
         k_max     = pi/a_in
         k_step    = (k_max - k_min)/real(steps_in , kind = dp)
         k_current = k_min
+
+        file_unit_1 = 15
+        file_unit_2 = 16
 		
 		
         open (unit = file_unit_1 , file = 'outputs/double_numerical_1.csv' , status = "replace" , action = "write", iostat = istat)
         open (unit = file_unit_2, file = 'outputs/double_numerical_2.csv', status = "replace", action= "write", iostat=istat)
-        if(matrix_size >= 3)then
-            do i = 3 , matrix_size
-                write(filename_i , fmt='(a25 , i1 , a4)') 'outputs/double_numerical_' , i , '.csv'
-                open (unit = 5*i , file = filename_i , status = "replace" ,&
-                &action = "write", iostat = istat)
-            end do
-        end if
 
         ! looping over the k values to find the eigenmatrix for each k value
         do k_big = 0 , steps_in , 1
 
-          !eigen_matrix(1 , 1) = epsilon_a_in
-          !eigen_matrix(2 , 2) = epsilon_b_in
+          eigen_matrix(1 , 1) = epsilon_a_in
+          eigen_matrix(2 , 2) = epsilon_b_in
 
-          !eigen_matrix(1 , 2) = -t_in*(1.0_dp + EXP(-1.0_dp*i_const*k_current*a_in))
-          !eigen_matrix(2 , 1) = -t_in*(1.0_dp + EXP(i_const*k_current*a_in))
+          eigen_matrix(1 , 2) = -t_in*(1.0_dp + EXP(-1.0_dp*i_const*k_current*a_in))
+          eigen_matrix(2 , 1) = -t_in*(1.0_dp + EXP(i_const*k_current*a_in))
 
-          call generate_eigen_matrix(k_current, a_in, t_in, epsilon_array_in, matrix_size, eigen_matrix)
+!           JOBZ = 'N'
+!           UPLO = 'U'
+!           N = 2
+!           LDA = N
+!           LWORK = -1
+!           INFO = 0
+!           A = eigen_matrix
+!           eigen_values = 0.0_dp
+!
+!           call zheev(JOBZ , UPLO , N , A , LDA ,eigen_values, WORK, LWORK, RWORK, INFO)
+
+!           JOBZ = 'V'
+!           UPLO = 'L'
+!           N = 2
+!           LDA = N
+!           LWORK =  3
+!           INFO = 0
+!           A = eigen_matrix
+!           eigen_values = 0.0_dp
+
+!           call zheev(JOBZ , UPLO , N , A , LDA ,eigen_values, WORK, LWORK, RWORK, INFO)
 
           call call_zheev(eigen_matrix, eigen_values)
 
-          do j = 1 , matrix_size
-            write (unit = 5*j , fmt = * , iostat = istat) k_current, ",", eigen_values(j)
-          end do
-
-
-
+          write (unit = file_unit_1 , fmt = * , iostat = istat) k_current, ",", eigen_values(1)
+          write (unit = file_unit_2 , fmt = * , iostat = istat) k_current, ",", eigen_values(2)
 !
 !           print*, eigen_values
           deallocate(eigen_values)
@@ -492,11 +396,11 @@ module numerical_subroutines
           k_current = k_current + k_step
         end do
 
-        do j = 1 , matrix_size
-            close (unit = 5*j , iostat = istat)
-            if (istat /= 0) stop "error closing test file"
-        end do
+        close (unit = file_unit_1 , iostat = istat)
+        if (istat /= 0) stop "error closing test file"
 		
+        close (unit = file_unit_2 , iostat = istat)
+        if (istat /= 0) stop "error closing test file"
     end subroutine find_eigenval
 
 end module numerical_subroutines
@@ -507,11 +411,10 @@ program Nate
     use numerical_subroutines
     !subroutines module put into main code here
     implicit none
-    integer                                 :: N_val, atoms_per_unit_cell
-    real(kind = dp)                         :: a_val, t_val
-    real(kind=dp), dimension(:),allocatable :: epsilon_array
-    character(len = 30)                     :: filename1
-    character(len = 30)                     :: case_type
+    real(kind = dp)     :: a_val, epsilon_a_val, epsilon_b_val, t_val
+    integer             :: N_val
+    character(len = 30) :: filename1
+    character(len = 30) :: case_type
 
     !a_val         = 1.0_dp
     !epsilon_a_val = 0.0_dp
@@ -520,21 +423,25 @@ program Nate
     !N_val         = 1E3
     
 	!Gets the N, a, t, epsilon_a, and epsilon_b values from the inputs.txt file
-    call get_inputs(N_val, a_val, t_val, epsilon_array, atoms_per_unit_cell)
+    call get_inputs(N_val, a_val, t_val, epsilon_a_val, epsilon_b_val)
 
-    call find_eigenval(a_val , epsilon_array , t_val, N_val, atoms_per_unit_cell)
+    call find_eigenval(a_val , epsilon_a_val , epsilon_b_val , t_val, N_val)
 
-    if (atoms_per_unit_cell == 2) then
-        filename1 = 'outputs/single_analytical.csv'
-        case_type = 'single'
-        !case types used to define type of analytic solution wanted :- single calculated here
-        call plotting_subroutine(a_val , epsilon_array(1), epsilon_array(2), t_val , N_val , filename1 , case_type)
-        !analytic solution calculated and written to .csv file all through plotting_subroutine
+    write(filename1 , 11) 'outputs/ NUMERICAL N = ' , N_val , 'epsilon_a = ' , epsilon_a_val , 'epsilon_b = ' , epsilon_b_val ,&
+    &'t = ' , t_val , '.csv'
 
-        filename1 = 'outputs/double_analytical.csv'
-        case_type = 'double'
-        !double calculated here
-        call plotting_subroutine(a_val , epsilon_array(1), epsilon_array(2) , t_val , N_val , filename1 , case_type)
-    end if
+    write(filename2 , 11) 'outputs/ ANALYTICAL N = ' , N_val , 'epsilon_a = ' , epsilon_a_val , 'epsilon_b = ' , epsilon_b_val ,&
+    &'t = ' , t_val , '.csv'
+
+    filename1 = 'outputs/single_analytical.csv'
+    case_type = 'single'
+    !case types used to define type of analytic solution wanted :- single calculated here
+    call plotting_subroutine(a_val , epsilon_a_val , epsilon_b_val , t_val , N_val , filename1 , case_type)
+    !analytic solution calculated and written to .csv file all through plotting_subroutine
+
+    filename1 = 'outputs/double_analytical.csv'
+    case_type = 'double'
+    !double calculated here
+    call plotting_subroutine(a_val , epsilon_a_val , epsilon_b_val , t_val , N_val , filename1 , case_type)
 
 end program Nate

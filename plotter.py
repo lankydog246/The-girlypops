@@ -1,6 +1,8 @@
 #Imports libraries
 import matplotlib.pyplot as plt
 from os import getcwd, path, chdir, listdir, mkdir
+import textwrap
+import numpy as np
 
 #Gets the inputs stored in inputs.txt and returns them as a dictionary
 def get_inputs():
@@ -32,6 +34,10 @@ def get_inputs():
                     case "N":
                         #(Needs to be converted to a float first before becoming a int due to python weirdness)
                         values[1] = int(float(values[1]))
+                    # Stores the variable called N as an integer
+                    case "atoms_per_unit_cell":
+                        #(Needs to be converted to a float first before becoming a int due to python weirdness)
+                        values[1] = int(float(values[1]))
                     #Default Case (by default defines the constants as floats)
                     case _:
                         values[1] = float(values[1])
@@ -54,16 +60,21 @@ def plot(inputs, plotting_mode="separate"):
         #Opens the current file in read-only mode
         with open(file, "r") as f:
             #Creating 2 arrays to hold
-            k = []
-            E = []
+            k = np.array([])
+            E = np.array([])
             n = 0
             for line in f:
                 n += 1
                 #separates the string by commas
                 values = line.split(",")
                 #Gets the r values for the different axis
-                k.append(float(values[0]))
-                E.append(float(values[1]))
+                k = np.append(k, float(values[0]))
+                E = np.append(E, float(values[1]))
+            
+            #Scales it so the graphs are adjusted to the Fermi Energy
+            E = E - np.mean(E)    
+            
+            
         
         #Gets rid of the case where you double plot the single for no reason as we don't do the numerical for the single
         #(Only realised upon implementation)
@@ -72,7 +83,10 @@ def plot(inputs, plotting_mode="separate"):
             if "analytical" in file:
                 plt.plot(k,E,label="Analytical")
             elif "numerical" in file:
-                plt.plot(k,E,label="Numerical")
+                for i in range(inputs["atoms_per_unit_cell"]):
+                    min = int(len(k)/inputs["atoms_per_unit_cell"]*i)
+                    max = int(len(k)/inputs["atoms_per_unit_cell"]*(i+1))
+                    plt.plot(k[min:max],E[min:max],label=f"Numerical_{i+1}")
             else:
                 plt.plot(k,E)
             
@@ -89,13 +103,18 @@ def plot(inputs, plotting_mode="separate"):
                 subtitle = ""
                 for key, value in inputs.items():
                     subtitle += f"{key}={value} "
-                plt.title(subtitle) #The subtitle
+                #Adds line breaks to make sure the whole subtitle is readable
+                subtitle = "\n".join(textwrap.wrap(subtitle, width=60))
+                plt.title(subtitle) #Adds the subtitle
+                
+                #Makes sure the title and subtitle don't overlap
+                plt.tight_layout()
 
                 #Adds a grid behind the data on the graph
                 plt.grid()
 
                 #Adds a legend if you're plotting the analytical and numerical on the same graph
-                if plotting_mode == "overlap":
+                if plotting_mode == "overlap" or inputs["atoms_per_unit_cell"]>2:
                     plt.legend()
 
                 try:
@@ -127,5 +146,8 @@ def plot(inputs, plotting_mode="separate"):
 
 print("Started Plotting...")
 plot(inputs:=get_inputs())
-plot(inputs, "overlap")
+#Makes sure only the one which has an analytical and numerical solution
+#(the one with 2 atoms per unit cell gets plotted twice)
+if inputs["atoms_per_unit_cell"] == 2:
+    plot(inputs, "overlap")
 print("Finished Plotting")
